@@ -1,10 +1,3 @@
-''' 
-Naufal Khairul Rizky
-5025221127
-Keamanan Informasi B
-Tugas 1
-'''
-
 import random
 
 # das default tables
