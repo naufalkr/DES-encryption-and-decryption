@@ -1,6 +1,6 @@
 import random
 
-# das default tables
+# des default tables
 IP = [
     58, 50, 42, 34, 26, 18, 10, 2,
 	60, 52, 44, 36, 28, 20, 12, 4,
@@ -111,7 +111,6 @@ KEY_COMP = [
     46, 42, 50, 36, 29, 32
 ]
 
-
 # additional functions
 def hex2bin(s):
     return ''.join(f'{int(c, 16):04b}' for c in s)
@@ -169,7 +168,6 @@ def generate_round_keys(key):
         roundKeys.append(round_key)
     return roundKeys
 
-# encrypt
 def encrypt_round(left, right, roundKey):
     rightExpanded = permute(right, EXP, 48)    
     xorResult = xor(rightExpanded, roundKey)    
@@ -179,17 +177,11 @@ def encrypt_round(left, right, roundKey):
         col = bin2dec(int(xorResult[j * 6 + 1:j * 6 + 5]))
         val = SBOX[j][row][col]
         sbox_str += dec2bin(val)
-    sbox_result = permute(sbox_str, PBOX, 32)    
+    sbox_result = permute(sbox_str, PBOX, 32)
+   
     return xor(left, sbox_result), right
 
-def encrypt(pt, roundKeys):
-    if all(c in '0123456789ABCDEF' for c in pt):  
-        pt = hex2bin(pt) #base16
-    elif all(c in '01' for c in pt):  
-        pass  #biner
-    else: 
-        pt = ascii2bin(pt) #ascii
-
+def encrypt_block(pt, roundKeys):    
     pt = permute(pt, IP, 64)
     left = pt[0:32] 
     right = pt[32:64] 
@@ -198,14 +190,36 @@ def encrypt(pt, roundKeys):
         left, right = encrypt_round(left, right, roundKeys[i])
         if i != 15: 
             left, right = right, left
+        print("Round ", i + 1, " Left:", bin2hex(left), " Right:", bin2hex(right), " Round Key:", bin2hex(roundKeys[i]))
 
     cipher_text = permute(left + right, FP, 64)
     return cipher_text
 
-# test
-plainText = "31224DFE63526353"  # base16
-# plainText = "Hello :3" # ASCII 64 bit
-# plainText = "110110001011..."  # binary
+def encrypt(pt, roundKeys):
+    if all(c in '0123456789ABCDEF' for c in pt):  
+        pt = hex2bin(pt) # base16
+    else:  
+        pt = ascii2bin(pt) # ascii
+
+    while len(pt) % 64 != 0:
+        pt += '0'  
+
+    cipher_text = ''
+    for i in range(0, len(pt), 64):
+        cipher_text += encrypt_block(pt[i:i + 64], roundKeys)
+       
+    return cipher_text
+
+# decrypt
+def decrypt(ct, roundKeys):
+    plain_text = ''
+    for i in range(0, len(ct), 64):
+        plain_text += encrypt_block(ct[i:i + 64], roundKeys)
+    return plain_text
+
+# testing
+# plainText = "31224DFE635263531122334455667788"  # base16
+plainText = "Hello world" # ascii
 
 key = generate_key()
 roundKeys = generate_round_keys(key)
@@ -213,23 +227,21 @@ roundKeys = generate_round_keys(key)
 print("\nPlain text:", plainText)
 print("Generated key:", bin2hex(key))
 
+# encrypt
 print("\nEncryption")
 encryptBin = encrypt(plainText, roundKeys)
 encryptText = bin2hex(encryptBin)
 print("Encrypt Output:", encryptText)
 
-# Dekripsi
+# decrypt
 print("\nDecryption")
 roundKeysReverse = roundKeys[::-1]
-decryptBin = encrypt(encryptText, roundKeysReverse)
+decryptBin = decrypt(encryptBin, roundKeysReverse)
 
 # base16 case
-decryptPlainText = bin2hex(decryptBin)
-print("Decrypt Output:", decryptPlainText)
+# decryptPlainText = bin2hex(decryptBin)
+# print("Decrypt Output:", decryptPlainText)
 
 # ascii case
-# decryptASCII = bin2ascii(decryptBin) 
-# print("Decrypt Output:", decryptASCII)
-
-# bin case
-# print("Decrypt Output:", decryptBin)
+decryptASCII = bin2ascii(decryptBin) 
+print("Decrypt Output:", decryptASCII)
